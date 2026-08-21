@@ -1,0 +1,16 @@
+---
+description: Push VOGL changes to the GitHub repository
+alwaysApply: true
+---
+
+# GitHub is the source of truth
+
+This project lives at https://github.com/Flamini90/vogl (`origin`).
+
+After finishing work the user asked for:
+
+1. Commit the relevant files with a concise message that explains why.
+2. Push to `origin` on the current branch (`git push -u origin HEAD` if needed).
+3. Do not wait for a second "please push" unless auth or a conflict blocks it.
+
+Do not force-push to `main`/`master` unless the user explicitly asks.

@@ -46,8 +46,7 @@ export function AddVehicleFlow() {
     setDraft((current) => ({ ...current, ...update }))
   }
 
-  async function searchPlate(event: React.FormEvent) {
-    event.preventDefault()
+  async function searchPlate() {
     const plate = normalizePlate(draft.plate)
     if (plate.length < 5) {
       toast.error("Inserisci una targa valida.")
@@ -56,27 +55,35 @@ export function AddVehicleFlow() {
 
     setBusy(true)
     patch({ plate })
-    const result = await lookupPlateClient(plate)
-    setBusy(false)
 
-    if (result.ok) {
-      patch({
-        plate,
-        make: result.identity.make,
-        model: result.identity.model,
-        year: result.identity.year ?? null,
-        fuel: result.identity.fuel ?? draft.fuel,
-        vin: result.identity.vin ?? draft.vin,
-        identitySource: "plate",
-        registrationDate: result.identity.registrationDate ?? null,
-      })
-      setLookupMessage("Anagrafica recuperata dalla targa. Controlla i dati e continua.")
-    } else {
-      setLookupMessage(result.message)
+    try {
+      const result = await lookupPlateClient(plate)
+
+      if (result.ok) {
+        patch({
+          plate,
+          make: result.identity.make,
+          model: result.identity.model,
+          year: result.identity.year ?? null,
+          fuel: result.identity.fuel ?? draft.fuel,
+          vin: result.identity.vin ?? draft.vin,
+          identitySource: "plate",
+          registrationDate: result.identity.registrationDate ?? null,
+        })
+        setLookupMessage("Anagrafica recuperata dalla targa. Controlla i dati e continua.")
+      } else {
+        setLookupMessage(result.message)
+        patch({ plate, identitySource: "manual" })
+      }
+    } catch {
+      setLookupMessage(
+        "Impossibile cercare l'anagrafica ora. Continua con OBD oppure inserisci marca e modello a mano.",
+      )
       patch({ plate, identitySource: "manual" })
+    } finally {
+      setBusy(false)
+      setStep("identità")
     }
-
-    setStep("identità")
   }
 
   async function searchVin() {
@@ -157,22 +164,29 @@ export function AddVehicleFlow() {
       <LicensePlate plate={draft.plate} size="lg" className="mx-auto" />
 
       {step === "targa" ? (
-        <form className="space-y-5" onSubmit={(event) => void searchPlate(event)}>
+        <div className="space-y-5">
           <Field label="Targa" htmlFor="plate" hint="Formato italiano, spazi facoltativi.">
             <Input
               id="plate"
               value={draft.plate}
               autoCapitalize="characters"
               autoComplete="off"
+              enterKeyHint="search"
               className="h-12 text-center font-heading text-xl tracking-[0.2em] uppercase"
               onChange={(event) => patch({ plate: event.target.value.toUpperCase() })}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault()
+                  void searchPlate()
+                }
+              }}
             />
           </Field>
-          <Button className="h-12 w-full" disabled={busy}>
+          <Button type="button" className="h-12 w-full" disabled={busy} onClick={() => void searchPlate()}>
             {busy ? <LoaderCircle className="animate-spin" /> : <Search />}
             Cerca anagrafica
           </Button>
-        </form>
+        </div>
       ) : null}
 
       {step === "identità" ? (
