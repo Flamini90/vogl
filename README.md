@@ -1,36 +1,58 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# VOGL
 
-## Getting Started
+**Vehicle Oversight, Garage & Lifecycle**
 
-First, run the development server:
+Webapp mobile-first per la gestione completa della manutenzione dei veicoli: anagrafica dalla targa, chilometri dallo scanner OBD, cicli ordinari e notifiche di rinnovo.
+
+## Perché costa zero
+
+- Hosting: [Vercel Hobby](https://vercel.com) è gratuito.
+- Dati: restano nel browser (IndexedDB). Nessun database, nessun account, nessuna API a pagamento obbligatoria.
+- VIN: decodifica gratuita via [NHTSA vPIC](https://vpic.nhtsa.dot.gov/api/).
+- Targa: in Italia non esiste un'anagrafe pubblica gratuita. Senza variabili d'ambiente VOGL passa automaticamente a OBD o inserimento manuale.
+- Notifiche: Web Notification + service worker, senza provider push a pagamento.
+
+## Avvio locale
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Apri [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Deploy su Vercel
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Carica il repo su GitHub oppure usa `npx vercel`.
+2. Framework preset: Next.js.
+3. Nessuna variabile obbligatoria.
 
-## Learn More
+### Ricerca targa opzionale
 
-To learn more about Next.js, take a look at the following resources:
+Se un giorno vuoi un'anagrafe targa (servizi italiani a consumo), imposta:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+PLATE_LOOKUP_ENDPOINT=https://esempio/api/{plate}
+PLATE_LOOKUP_TOKEN=il_tuo_token
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+VOGL chiama l'endpoint sostituendo `{plate}` e mappa marca, modello, anno, alimentazione e VIN se presenti. Senza queste variabili il costo resta 0.
 
-## Deploy on Vercel
+## Scanner OBD
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Serve un adattatore **ELM327 Bluetooth Low Energy** e un browser con Web Bluetooth (Chrome/Edge su Android o desktop). I dongle Bluetooth classici (SPP) non sono visibili dal browser.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Dallo scanner VOGL tenta:
+
+- VIN (`0902`)
+- Chilometri (`01A6`, se la centralina li espone)
+
+Se i km non arrivano, li inserisci a mano. Il VIN viene comunque usato per completare marca e modello.
+
+## Notifiche
+
+Da Impostazioni attiva le notifiche e, se possibile, installa VOGL come app (PWA). I reminder vengono valutati all'apertura e, su Chrome Android, anche in background con Periodic Background Sync.
+
+## Stack
+
+Next.js, Tailwind CSS, shadcn/ui, Dexie. Codice organizzato per dominio (`lib/domain`), persistenza (`lib/db`), lookup, OBD e notifiche, senza duplicare le regole di scadenza.
