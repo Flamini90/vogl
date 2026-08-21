@@ -12,7 +12,7 @@ const ITEMS = [
 export function BottomNav({ pathname }: { pathname: string }) {
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-white/8 bg-background/80 px-3 pt-2 backdrop-blur-xl"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-white/8 bg-background px-3 pt-2"
       style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
     >
       <ul className="mx-auto grid max-w-lg grid-cols-4 gap-1">
@@ -24,6 +24,7 @@ export function BottomNav({ pathname }: { pathname: string }) {
             <li key={item.href}>
               <Link
                 href={item.href}
+                prefetch={false}
                 className={cn(
                   "flex min-h-12 flex-col items-center justify-center gap-1 rounded-2xl text-[11px] tracking-wide",
                   item.primary

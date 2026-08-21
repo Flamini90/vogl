@@ -6,8 +6,7 @@ self.addEventListener("install", (event) => {
 })
 
 self.addEventListener("activate", () => {
-  // Intentionally skip clients.claim(). Claiming on first install aborts the
-  // current navigation and Chrome shows "This page couldn't load".
+  // Do not call clients.claim() — it aborts an in-flight first visit.
 })
 
 self.addEventListener("notificationclick", (event) => {
@@ -35,12 +34,6 @@ self.addEventListener("periodicsync", (event) => {
   event.waitUntil(notifyFromCache())
 })
 
-self.addEventListener("message", (event) => {
-  if (event.data?.type === "SHOW_NOTIFICATION") {
-    event.waitUntil(self.registration.showNotification(event.data.title, event.data.options))
-  }
-})
-
 async function notifyFromCache() {
   const cache = await caches.open(CACHE_NAME)
   const cached = await cache.match(PAYLOAD_URL)
@@ -50,10 +43,9 @@ async function notifyFromCache() {
 
   const payload = await cached.json()
   const items = Array.isArray(payload.payloads) ? payload.payloads : []
-  const urgent = items.slice(0, 3)
 
   await Promise.all(
-    urgent.map((item) =>
+    items.slice(0, 3).map((item) =>
       self.registration.showNotification(item.title, {
         body: item.body,
         tag: item.tag,

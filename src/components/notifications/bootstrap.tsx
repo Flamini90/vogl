@@ -4,49 +4,43 @@ import { useEffect } from "react"
 import { garageRepository } from "@/lib/db/garage-repository"
 import { evaluateAndNotify, registerServiceWorker } from "@/lib/notifications/service"
 
+async function clearStaleWorkers() {
+  if (!("serviceWorker" in navigator)) {
+    return
+  }
+
+  const registrations = await navigator.serviceWorker.getRegistrations()
+  await Promise.all(registrations.map((registration) => registration.unregister()))
+}
+
 export function NotificationBootstrap() {
   useEffect(() => {
     let cancelled = false
 
-    async function boot() {
-      const settings = await garageRepository.getSettings().catch(() => null)
-      if (cancelled) {
-        return
-      }
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const settings = await garageRepository.getSettings()
+          if (cancelled) {
+            return
+          }
 
-      if (settings?.notificationsEnabled) {
-        await registerServiceWorker()
-      }
+          if (settings.notificationsEnabled) {
+            await registerServiceWorker()
+          } else {
+            await clearStaleWorkers()
+          }
 
-      await evaluateAndNotify().catch(() => undefined)
-    }
-
-    const start = () => {
-      window.setTimeout(() => {
-        if (!cancelled) {
-          void boot()
+          await evaluateAndNotify()
+        } catch {
+          await clearStaleWorkers().catch(() => undefined)
         }
-      }, 0)
-    }
-
-    if (document.readyState === "complete") {
-      start()
-    } else {
-      window.addEventListener("load", start, { once: true })
-    }
-
-    const onFocus = () => {
-      void evaluateAndNotify().catch(() => undefined)
-    }
-
-    window.addEventListener("focus", onFocus)
-    document.addEventListener("visibilitychange", onFocus)
+      })()
+    }, 2500)
 
     return () => {
       cancelled = true
-      window.removeEventListener("load", start)
-      window.removeEventListener("focus", onFocus)
-      document.removeEventListener("visibilitychange", onFocus)
+      window.clearTimeout(timer)
     }
   }, [])
 
