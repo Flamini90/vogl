@@ -5,8 +5,9 @@ self.addEventListener("install", (event) => {
   event.waitUntil(self.skipWaiting())
 })
 
-self.addEventListener("activate", (event) => {
-  event.waitUntil(self.clients.claim())
+self.addEventListener("activate", () => {
+  // Intentionally skip clients.claim(). Claiming on first install aborts the
+  // current navigation and Chrome shows "This page couldn't load".
 })
 
 self.addEventListener("notificationclick", (event) => {
@@ -36,9 +37,7 @@ self.addEventListener("periodicsync", (event) => {
 
 self.addEventListener("message", (event) => {
   if (event.data?.type === "SHOW_NOTIFICATION") {
-    event.waitUntil(
-      self.registration.showNotification(event.data.title, event.data.options),
-    )
+    event.waitUntil(self.registration.showNotification(event.data.title, event.data.options))
   }
 })
 

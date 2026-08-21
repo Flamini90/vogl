@@ -8,6 +8,7 @@ import type { GarageSnapshot } from "@/lib/domain/types"
 import {
   enablePeriodicSync,
   evaluateAndNotify,
+  registerServiceWorker,
   requestNotificationPermission,
 } from "@/lib/notifications/service"
 import { useGarageData } from "@/hooks/use-garage"
@@ -35,6 +36,7 @@ export function SettingsView() {
       }
 
       await garageRepository.saveSettings({ notificationsEnabled: true })
+      await registerServiceWorker()
       await enablePeriodicSync().catch(() => undefined)
       await evaluateAndNotify()
       toast.success("Notifiche attive. VOGL avvisa bollo, assicurazione e tagliandi.")
