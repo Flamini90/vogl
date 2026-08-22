@@ -8,7 +8,7 @@ Webapp mobile-first per la gestione completa della manutenzione dei veicoli: ana
 
 - Hosting: [Vercel Hobby](https://vercel.com) è gratuito.
 - Dati: restano nel browser (IndexedDB). Nessun database, nessun account, nessuna API a pagamento obbligatoria.
-- VIN: decodifica gratuita via [NHTSA vPIC](https://vpic.nhtsa.dot.gov/api/).
+- VIN: decodifica via [CarAPI.dev](https://docs.carapi.dev/endpoints/vin-decode); se manca il modello, fallback gratuito [NHTSA vPIC](https://vpic.nhtsa.dot.gov/api/).
 - Targa: in Italia non esiste un'anagrafe pubblica gratuita. Senza variabili d'ambiente VOGL passa automaticamente a OBD o inserimento manuale.
 - Notifiche: Web Notification + service worker, senza provider push a pagamento.
 
@@ -47,7 +47,7 @@ Dallo scanner VOGL tenta:
 - VIN (`0902`)
 - Chilometri (`01A6`, se la centralina li espone)
 
-Se i km non arrivano, li inserisci a mano. Il VIN viene comunque usato per completare marca e modello.
+Se i km non arrivano, li inserisci a mano. Il VIN viene decodificato per marca, modello, anno e alimentazione.
 
 ## Diario
 

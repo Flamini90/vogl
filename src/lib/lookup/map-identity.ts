@@ -94,15 +94,26 @@ export function pickIdentityFields(payload: unknown): {
   }
 
   const nested =
+    asRecord(root.specifications) ??
     asRecord(root.data) ??
     asRecord(root.vehicle) ??
     asRecord(root.result) ??
     asRecord(root.Results && Array.isArray(root.Results) ? root.Results[0] : undefined) ??
     root
 
-  const make = asString(read(nested, ["make", "marca", "brand", "manufacturer"]))
+  const manufacturer = asRecord(root.manufacturer)
+  const make =
+    asString(read(nested, ["make", "marca", "brand", "manufacturer"])) ??
+    asString(read(manufacturer ?? {}, ["name"]))
   const model = asString(read(nested, ["model", "modello", "commercialName", "version", "allestimento"]))
-  const year = asNumber(read(nested, ["year", "anno", "modelyear", "registrationYear", "annoimmatricolazione"]))
+  const registrationDate = asString(
+    read(nested, ["registrationdate", "dataimmatricolazione", "immatricolazione"]),
+  )
+  const year =
+    asNumber(read(nested, ["year", "anno", "modelyear", "registrationYear", "annoimmatricolazione"])) ??
+    (registrationDate && /^\d{4}/.test(registrationDate)
+      ? Number.parseInt(registrationDate.slice(0, 4), 10)
+      : undefined)
   const fuel = mapFuel(asString(read(nested, ["fuel", "alimentazione", "fueltype", "fueltypeprimary"])))
   const displacement =
     asNumber(read(nested, ["displacementcc", "cilindrata", "displacement", "enginecapacity"])) ??
@@ -110,11 +121,10 @@ export function pickIdentityFields(payload: unknown): {
       const liters = asNumber(read(nested, ["displacementl"]))
       return liters ? Math.round(liters * 1000) : undefined
     })()
-  const powerKw = asNumber(read(nested, ["powerkw", "kw", "enginekw", "potenza"]))
-  const vin = asString(read(nested, ["vin", "telaio", "vehicleidentificationnumber"]))
-  const registrationDate = asString(
-    read(nested, ["registrationdate", "dataimmatricolazione", "immatricolazione"]),
-  )
+  const powerKw = asNumber(read(nested, ["powerkw", "kw", "enginekw", "potenza", "enginepower"]))
+  const vin =
+    asString(read(nested, ["vin", "telaio", "vehicleidentificationnumber"])) ??
+    asString(read(root, ["vin"]))
 
   return {
     make,

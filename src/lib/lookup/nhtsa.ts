@@ -1,3 +1,4 @@
+import { decodeVinCarApi } from "@/lib/lookup/carapi"
 import { pickIdentityFields } from "@/lib/lookup/map-identity"
 import type { LookupResult } from "@/lib/lookup/types"
 
@@ -14,6 +15,15 @@ export async function decodeVin(vin: string): Promise<LookupResult> {
     return { ok: false, reason: "invalid", message: "VIN non valido. Deve contenere 17 caratteri." }
   }
 
+  const carapi = await decodeVinCarApi(normalized)
+  if (carapi.ok) {
+    return carapi
+  }
+
+  return decodeVinNhtsa(normalized)
+}
+
+async function decodeVinNhtsa(normalized: string): Promise<LookupResult> {
   try {
     const response = await fetch(`${NHTSA_URL}/${normalized}?format=json`, {
       cache: "force-cache",
