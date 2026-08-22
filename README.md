@@ -2,7 +2,7 @@
 
 **Vehicle Oversight, Garage & Lifecycle**
 
-Webapp mobile-first per la gestione completa della manutenzione dei veicoli: anagrafica dalla targa, chilometri dallo scanner OBD, cicli ordinari e notifiche di rinnovo.
+Webapp mobile-first per la gestione completa della manutenzione dei veicoli: anagrafica dalla targa, chilometri dallo scanner OBD, diario di rifornimenti e spese, cicli ordinari e notifiche di rinnovo.
 
 ## Perché costa zero
 
@@ -49,10 +49,14 @@ Dallo scanner VOGL tenta:
 
 Se i km non arrivano, li inserisci a mano. Il VIN viene comunque usato per completare marca e modello.
 
+## Diario
+
+Nel dettaglio veicolo, la scheda **Diario** registra rifornimenti (o ricariche), chilometri, interventi e spese. Due pieni consecutivi calcolano il consumo medio (L/100 km o kWh/100 km). I costi restano sul dispositivo e finiscono nel backup JSON.
+
 ## Notifiche
 
 Da Impostazioni attiva le notifiche e, se possibile, installa VOGL come app (PWA). I reminder vengono valutati all'apertura e, su Chrome Android, anche in background con Periodic Background Sync.
 
 ## Stack
 
-Next.js, Tailwind CSS, shadcn/ui, Dexie. Codice organizzato per dominio (`lib/domain`), persistenza (`lib/db`), lookup, OBD e notifiche, senza duplicare le regole di scadenza.
+Next.js, Tailwind CSS, shadcn/ui, Dexie. Codice organizzato per dominio (`lib/domain`), persistenza (`lib/db`), lookup, OBD, diario e notifiche, senza duplicare le regole di scadenza.

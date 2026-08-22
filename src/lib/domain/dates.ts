@@ -47,3 +47,21 @@ export function formatNumberIt(value: number): string {
 export function formatKm(value: number): string {
   return `${formatNumberIt(Math.round(value))} km`
 }
+
+export function formatEur(value: number): string {
+  return new Intl.NumberFormat("it-IT", {
+    style: "currency",
+    currency: "EUR",
+  }).format(value)
+}
+
+export function formatDecimal(value: number, digits = 1): string {
+  return new Intl.NumberFormat("it-IT", {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  }).format(value)
+}
+
+export function currentYear(): number {
+  return new Date().getFullYear()
+}

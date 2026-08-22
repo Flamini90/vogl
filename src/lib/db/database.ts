@@ -1,6 +1,7 @@
 import Dexie, { type EntityTable } from "dexie"
 import type {
   AppSettings,
+  JournalEntry,
   MaintenanceOperation,
   NotificationLog,
   OdometerReading,
@@ -19,6 +20,7 @@ export class VoglDatabase extends Dexie {
   readings!: EntityTable<OdometerReading, "id">
   notificationLogs!: EntityTable<NotificationLog, "id">
   settings!: EntityTable<AppSettings, "id">
+  journal!: EntityTable<JournalEntry, "id">
 
   constructor() {
     super("vogl")
@@ -29,6 +31,15 @@ export class VoglDatabase extends Dexie {
       readings: "id, vehicleId, createdAt",
       notificationLogs: "id, operationId, vehicleId, fingerprint",
       settings: "id",
+    })
+
+    this.version(2).stores({
+      vehicles: "id, plate, updatedAt",
+      operations: "id, vehicleId, catalogKey, category",
+      readings: "id, vehicleId, createdAt",
+      notificationLogs: "id, operationId, vehicleId, fingerprint",
+      settings: "id",
+      journal: "id, vehicleId, kind, at, createdAt",
     })
   }
 }

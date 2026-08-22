@@ -21,6 +21,12 @@ export type DueStatus = (typeof DUE_STATUSES)[number]
 export const ODOMETER_SOURCES = ["obd", "manual"] as const
 export type OdometerSource = (typeof ODOMETER_SOURCES)[number]
 
+export const JOURNAL_KINDS = ["odometer", "refuel", "service", "expense"] as const
+export type JournalKind = (typeof JOURNAL_KINDS)[number]
+
+export const QUANTITY_UNITS = ["l", "kwh"] as const
+export type QuantityUnit = (typeof QUANTITY_UNITS)[number]
+
 export type Vehicle = {
   id: string
   plate: string
@@ -74,6 +80,39 @@ export type NotificationLog = {
   sentAt: string
 }
 
+export type JournalEntry = {
+  id: string
+  vehicleId: string
+  kind: JournalKind
+  at: string
+  createdAt: string
+  km: number
+  title: string
+  notes: string | null
+  quantity: number | null
+  unit: QuantityUnit | null
+  amount: number | null
+  fullTank: boolean
+  operationId: string | null
+  catalogKey: string | null
+}
+
+export type CreateJournalInput = {
+  vehicleId: string
+  kind: JournalKind
+  at?: string
+  km: number
+  title: string
+  notes?: string | null
+  quantity?: number | null
+  unit?: QuantityUnit | null
+  amount?: number | null
+  fullTank?: boolean
+  operationId?: string | null
+  catalogKey?: string | null
+  odometerSource?: OdometerSource
+}
+
 export type AppSettings = {
   id: "app"
   notificationsEnabled: boolean
@@ -104,5 +143,6 @@ export type GarageSnapshot = {
   vehicles: Vehicle[]
   operations: MaintenanceOperation[]
   readings: OdometerReading[]
+  journal?: JournalEntry[]
   settings: AppSettings
 }

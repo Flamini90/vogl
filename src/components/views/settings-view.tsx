@@ -63,6 +63,9 @@ export function SettingsView() {
       if (!Array.isArray(snapshot.vehicles) || !Array.isArray(snapshot.operations)) {
         throw new Error("File non valido")
       }
+      if (snapshot.journal && !Array.isArray(snapshot.journal)) {
+        throw new Error("File non valido")
+      }
       await garageRepository.importSnapshot(snapshot)
       toast.success("Garage ripristinato")
     } catch {
@@ -98,6 +101,10 @@ export function SettingsView() {
 
       <section className="space-y-3">
         <h2 className="font-heading text-lg">Backup locale</h2>
+        <p className="text-muted-foreground text-sm leading-6">
+          Esporta rifornimenti, interventi e scadenze in un JSON sul telefono. L&apos;importazione
+          sostituisce il garage attuale.
+        </p>
         <Button variant="outline" className="h-11 w-full" onClick={() => void exportGarage()}>
           Esporta garage
         </Button>

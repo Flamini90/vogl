@@ -1,4 +1,11 @@
-import type { DueStatus, FuelType, IdentitySource, OperationCategory } from "@/lib/domain/types"
+import type {
+  DueStatus,
+  FuelType,
+  IdentitySource,
+  JournalKind,
+  OperationCategory,
+  QuantityUnit,
+} from "@/lib/domain/types"
 
 export const FUEL_LABELS: Record<FuelType, string> = {
   petrol: "Benzina",
@@ -27,4 +34,16 @@ export const STATUS_LABELS: Record<DueStatus, string> = {
   soon: "In arrivo",
   due: "In scadenza",
   overdue: "Scaduto",
+}
+
+export const JOURNAL_LABELS: Record<JournalKind, string> = {
+  odometer: "Chilometri",
+  refuel: "Rifornimento",
+  service: "Intervento",
+  expense: "Spesa",
+}
+
+export const UNIT_LABELS: Record<QuantityUnit, string> = {
+  l: "L",
+  kwh: "kWh",
 }

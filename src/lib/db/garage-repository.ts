@@ -4,8 +4,10 @@ import { createId } from "@/lib/domain/ids"
 import { normalizePlate } from "@/lib/domain/plate"
 import type {
   AppSettings,
+  CreateJournalInput,
   CreateVehicleInput,
   GarageSnapshot,
+  JournalEntry,
   MaintenanceOperation,
   NotificationLog,
   OdometerReading,
@@ -101,19 +103,37 @@ export const garageRepository = {
     }
 
     const operations = buildOperations(vehicle, input)
+    const source = input.identitySource === "obd" ? "obd" : "manual"
     const reading: OdometerReading = {
       id: createId(),
       vehicleId: vehicle.id,
       km: vehicle.odometerKm,
-      source: input.identitySource === "obd" ? "obd" : "manual",
+      source,
       vin: vehicle.vin,
       createdAt: timestamp,
     }
+    const opening: JournalEntry = {
+      id: createId(),
+      vehicleId: vehicle.id,
+      kind: "odometer",
+      at: todayIso(),
+      createdAt: timestamp,
+      km: vehicle.odometerKm,
+      title: source === "obd" ? "Prima lettura OBD" : "Prima rilevazione",
+      notes: null,
+      quantity: null,
+      unit: null,
+      amount: null,
+      fullTank: false,
+      operationId: null,
+      catalogKey: null,
+    }
 
-    await db.transaction("rw", db.vehicles, db.operations, db.readings, async () => {
+    await db.transaction("rw", db.vehicles, db.operations, db.readings, db.journal, async () => {
       await db.vehicles.add(vehicle)
       await db.operations.bulkAdd(operations)
       await db.readings.add(reading)
+      await db.journal.add(opening)
     })
 
     return vehicle
@@ -137,7 +157,7 @@ export const garageRepository = {
     const timestamp = nowIso()
     const rounded = Math.max(0, Math.round(km))
 
-    await db.transaction("rw", db.vehicles, db.readings, async () => {
+    await db.transaction("rw", db.vehicles, db.readings, db.journal, async () => {
       await db.vehicles.update(vehicleId, {
         odometerKm: rounded,
         odometerUpdatedAt: timestamp,
@@ -152,6 +172,22 @@ export const garageRepository = {
         vin: vin?.trim().toUpperCase() || null,
         createdAt: timestamp,
       })
+      await db.journal.add({
+        id: createId(),
+        vehicleId,
+        kind: "odometer",
+        at: todayIso(),
+        createdAt: timestamp,
+        km: rounded,
+        title: source === "obd" ? "Lettura OBD" : "Chilometri aggiornati",
+        notes: null,
+        quantity: null,
+        unit: null,
+        amount: null,
+        fullTank: false,
+        operationId: null,
+        catalogKey: null,
+      })
     })
   },
 
@@ -162,19 +198,46 @@ export const garageRepository = {
     await db.operations.update(id, patch)
   },
 
-  async completeOperation(id: string, vehicle: Vehicle, at = todayIso()): Promise<void> {
+  async completeOperation(
+    id: string,
+    vehicle: Vehicle,
+    options: { at?: string; amount?: number | null; notes?: string | null } = {},
+  ): Promise<void> {
     const operation = await db.operations.get(id)
     if (!operation) {
       return
     }
 
+    const at = options.at ?? todayIso()
+    const timestamp = nowIso()
     const dueAt =
       operation.intervalMonths !== null ? addMonths(at, operation.intervalMonths) : operation.dueAt
 
-    await db.operations.update(id, {
-      lastServiceKm: vehicle.odometerKm,
-      lastServiceAt: at,
-      dueAt,
+    const entry: JournalEntry = {
+      id: createId(),
+      vehicleId: vehicle.id,
+      kind: "service",
+      at,
+      createdAt: timestamp,
+      km: vehicle.odometerKm,
+      title: operation.name,
+      notes: options.notes?.trim() || null,
+      quantity: null,
+      unit: null,
+      amount: options.amount ?? null,
+      fullTank: false,
+      operationId: operation.id,
+      catalogKey: operation.catalogKey,
+    }
+
+    await db.transaction("rw", db.operations, db.journal, async () => {
+      await db.operations.update(id, {
+        lastServiceKm: vehicle.odometerKm,
+        lastServiceAt: at,
+        dueAt,
+        notes: options.notes?.trim() || operation.notes,
+      })
+      await db.journal.add(entry)
     })
   },
 
@@ -185,11 +248,13 @@ export const garageRepository = {
       db.operations,
       db.readings,
       db.notificationLogs,
+      db.journal,
       async () => {
         await db.vehicles.delete(id)
         await db.operations.where("vehicleId").equals(id).delete()
         await db.readings.where("vehicleId").equals(id).delete()
         await db.notificationLogs.where("vehicleId").equals(id).delete()
+        await db.journal.where("vehicleId").equals(id).delete()
       },
     )
   },
@@ -211,15 +276,83 @@ export const garageRepository = {
     await db.notificationLogs.add({ ...entry, id: createId() })
   },
 
+  async listJournal(vehicleId: string): Promise<JournalEntry[]> {
+    return db.journal.where("vehicleId").equals(vehicleId).toArray()
+  },
+
+  async listAllJournal(): Promise<JournalEntry[]> {
+    return db.journal.toArray()
+  },
+
+  async addJournalEntry(input: CreateJournalInput): Promise<JournalEntry> {
+    const timestamp = nowIso()
+    const at = input.at ?? todayIso()
+    const km = Math.max(0, Math.round(input.km))
+    const source = input.odometerSource ?? "manual"
+    const entry: JournalEntry = {
+      id: createId(),
+      vehicleId: input.vehicleId,
+      kind: input.kind,
+      at,
+      createdAt: timestamp,
+      km,
+      title: input.title.trim(),
+      notes: input.notes?.trim() || null,
+      quantity: input.quantity ?? null,
+      unit: input.unit ?? null,
+      amount: input.amount ?? null,
+      fullTank: Boolean(input.fullTank),
+      operationId: input.operationId ?? null,
+      catalogKey: input.catalogKey ?? null,
+    }
+
+    await db.transaction("rw", db.vehicles, db.readings, db.journal, async () => {
+      const vehicle = await db.vehicles.get(input.vehicleId)
+      await db.journal.add(entry)
+
+      if (!vehicle) {
+        return
+      }
+
+      const shouldUpdate =
+        input.kind === "odometer" ? km !== vehicle.odometerKm : km > vehicle.odometerKm
+
+      if (!shouldUpdate) {
+        return
+      }
+
+      await db.vehicles.update(input.vehicleId, {
+        odometerKm: km,
+        odometerUpdatedAt: timestamp,
+        updatedAt: timestamp,
+      })
+      await db.readings.add({
+        id: createId(),
+        vehicleId: input.vehicleId,
+        km,
+        source,
+        vin: vehicle.vin,
+        createdAt: timestamp,
+      })
+    })
+
+    return entry
+  },
+
+  async deleteJournalEntry(id: string): Promise<void> {
+    await db.journal.delete(id)
+  },
+
   async exportSnapshot(): Promise<GarageSnapshot> {
-    const [vehicles, operations, readings, settings] = await Promise.all([
+    const [vehicles, operations, readings, journal, settings] = await Promise.all([
       db.vehicles.toArray(),
       db.operations.toArray(),
       db.readings.toArray(),
+      db.journal.toArray(),
       ensureSettings(),
     ])
 
-    return { vehicles, operations, readings, settings }
+    return { vehicles, operations, readings, journal, settings }
   },
 
   async importSnapshot(snapshot: GarageSnapshot): Promise<void> {
@@ -228,14 +361,17 @@ export const garageRepository = {
       db.vehicles,
       db.operations,
       db.readings,
+      db.journal,
       db.settings,
       async () => {
         await db.vehicles.clear()
         await db.operations.clear()
         await db.readings.clear()
+        await db.journal.clear()
         await db.vehicles.bulkAdd(snapshot.vehicles)
         await db.operations.bulkAdd(snapshot.operations)
         await db.readings.bulkAdd(snapshot.readings)
+        await db.journal.bulkAdd(snapshot.journal ?? [])
         await db.settings.put(snapshot.settings ?? DEFAULT_SETTINGS)
       },
     )

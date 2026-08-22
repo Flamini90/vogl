@@ -3,28 +3,35 @@
 import { useMemo, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Bluetooth, Pencil } from "lucide-react"
+import { ArrowLeft, Bluetooth, Fuel, Gauge, Pencil } from "lucide-react"
 import { toast } from "sonner"
 import { garageRepository } from "@/lib/db/garage-repository"
-import { formatKm } from "@/lib/domain/dates"
+import { formatEur, formatKm } from "@/lib/domain/dates"
 import { projectVehicleOperations, vehicleHealth } from "@/lib/domain/due"
+import { averagePer100, formatPer100, quantityUnitForFuel, spendInYear } from "@/lib/domain/journal"
 import { FUEL_LABELS, SOURCE_LABELS } from "@/lib/domain/labels"
-import { useOperations, useVehicle, vehicleTitle } from "@/hooks/use-garage"
+import { useJournal, useOperations, useVehicle, vehicleTitle } from "@/hooks/use-garage"
+import { CompleteOperationSheet } from "@/components/journal/complete-sheet"
+import { JournalComposer, type JournalComposerMode } from "@/components/journal/journal-composer"
+import { JournalTab } from "@/components/journal/journal-tab"
 import { PageHeader } from "@/components/layout/page-header"
 import { OperationRow } from "@/components/maintenance/operation-row"
+import { OperationEditor } from "@/components/maintenance/operation-editor"
 import { ObdSheet } from "@/components/obd/obd-sheet"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { LicensePlate } from "@/components/vehicles/license-plate"
-import { OperationEditor } from "@/components/maintenance/operation-editor"
 
 export function VehicleView({ id }: { id: string }) {
   const router = useRouter()
   const vehicle = useVehicle(id)
   const operations = useOperations(id)
+  const journal = useJournal(id)
   const [obdOpen, setObdOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [completingId, setCompletingId] = useState<string | null>(null)
+  const [composer, setComposer] = useState<JournalComposerMode | null>(null)
 
   const projections = useMemo(
     () => (vehicle && operations ? projectVehicleOperations(vehicle, operations) : []),
@@ -49,6 +56,9 @@ export function VehicleView({ id }: { id: string }) {
     ordinary: projections.filter((item) => item.operation.category === "ordinary"),
     wear: projections.filter((item) => item.operation.category === "wear"),
   }
+  const unit = quantityUnitForFuel(vehicle.fuel)
+  const per100 = averagePer100(journal ?? [])
+  const yearSpend = spendInYear(journal ?? [])
 
   return (
     <div className="space-y-6">
@@ -74,23 +84,45 @@ export function VehicleView({ id }: { id: string }) {
             <p className="text-muted-foreground text-[11px] tracking-[0.16em] uppercase">Salute</p>
             <p className="font-heading mt-1 text-2xl">{vehicleHealth(projections)}</p>
           </div>
+          <div className="rounded-2xl bg-background/40 p-3">
+            <p className="text-muted-foreground text-[11px] tracking-[0.16em] uppercase">
+              {unit === "kwh" ? "Consumo" : "Media"}
+            </p>
+            <p className="font-heading mt-1 text-lg">
+              {per100 === null ? "—" : formatPer100(per100, unit)}
+            </p>
+          </div>
+          <div className="rounded-2xl bg-background/40 p-3">
+            <p className="text-muted-foreground text-[11px] tracking-[0.16em] uppercase">Anno</p>
+            <p className="font-heading mt-1 text-lg">{yearSpend > 0 ? formatEur(yearSpend) : "—"}</p>
+          </div>
         </div>
-        <div className="flex w-full gap-2">
-          <Button className="h-11 flex-1" onClick={() => setObdOpen(true)}>
+        <div className="grid w-full grid-cols-3 gap-2">
+          <Button className="h-11" onClick={() => setObdOpen(true)}>
             <Bluetooth />
-            Aggiorna da OBD
+            OBD
           </Button>
-          <Button variant="outline" size="icon-lg" render={<Link href={`/vehicles/${vehicle.id}/edit`} />}>
-            <Pencil />
+          <Button variant="outline" className="h-11" onClick={() => setComposer("odometer")}>
+            <Gauge />
+            Km
+          </Button>
+          <Button variant="outline" className="h-11" onClick={() => setComposer("refuel")}>
+            <Fuel />
+            {unit === "kwh" ? "kWh" : "Pieno"}
           </Button>
         </div>
+        <Button variant="outline" className="h-11 w-full" render={<Link href={`/vehicles/${vehicle.id}/edit`} />}>
+          <Pencil />
+          Modifica anagrafica
+        </Button>
       </div>
 
       <Tabs defaultValue="document">
-        <TabsList className="w-full">
+        <TabsList className="h-auto w-full">
           <TabsTrigger value="document">Documenti</TabsTrigger>
           <TabsTrigger value="ordinary">Tagliandi</TabsTrigger>
           <TabsTrigger value="wear">Usura</TabsTrigger>
+          <TabsTrigger value="journal">Diario</TabsTrigger>
         </TabsList>
         {(Object.keys(grouped) as Array<keyof typeof grouped>).map((key) => (
           <TabsContent key={key} value={key} className="space-y-3 pt-4">
@@ -98,16 +130,19 @@ export function VehicleView({ id }: { id: string }) {
               <OperationRow
                 key={projection.operation.id}
                 projection={projection}
-                onComplete={() => {
-                  void garageRepository.completeOperation(projection.operation.id, vehicle).then(() => {
-                    toast.success(`${projection.operation.name} aggiornato`)
-                  })
-                }}
+                onComplete={() => setCompletingId(projection.operation.id)}
                 onEdit={() => setEditingId(projection.operation.id)}
               />
             ))}
           </TabsContent>
         ))}
+        <TabsContent value="journal" className="pt-4">
+          <JournalTab
+            vehicle={vehicle}
+            entries={journal ?? []}
+            onCompose={setComposer}
+          />
+        </TabsContent>
       </Tabs>
 
       <Button
@@ -139,6 +174,14 @@ export function VehicleView({ id }: { id: string }) {
             )
             .then(() => toast.success("Chilometri aggiornati"))
         }}
+      />
+
+      <JournalComposer vehicle={vehicle} mode={composer} onClose={() => setComposer(null)} />
+
+      <CompleteOperationSheet
+        vehicle={vehicle}
+        operation={operations?.find((item) => item.id === completingId) ?? null}
+        onClose={() => setCompletingId(null)}
       />
 
       <OperationEditor

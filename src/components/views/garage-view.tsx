@@ -3,6 +3,8 @@
 import Link from "next/link"
 import { Plus } from "lucide-react"
 import { projectVehicleOperations } from "@/lib/domain/due"
+import { formatEur } from "@/lib/domain/dates"
+import { spendInYear } from "@/lib/domain/journal"
 import { BRAND } from "@/lib/brand"
 import { useGarageData } from "@/hooks/use-garage"
 import { Logo } from "@/components/brand/logo"
@@ -12,7 +14,8 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { VehicleCard } from "@/components/vehicles/vehicle-card"
 
 export function GarageView() {
-  const { vehicles, operations, ready } = useGarageData()
+  const { vehicles, operations, journal, ready } = useGarageData()
+  const yearSpend = spendInYear(journal)
 
   return (
     <div>
@@ -36,6 +39,11 @@ export function GarageView() {
         <EmptyGarage />
       ) : (
         <div className="space-y-4">
+          {yearSpend > 0 ? (
+            <p className="text-muted-foreground text-sm">
+              {formatEur(yearSpend)} di rifornimenti, interventi e spese quest&apos;anno.
+            </p>
+          ) : null}
           {vehicles.map((vehicle) => (
             <VehicleCard
               key={vehicle.id}
@@ -44,6 +52,7 @@ export function GarageView() {
                 vehicle,
                 operations.filter((item) => item.vehicleId === vehicle.id),
               )}
+              journal={journal.filter((item) => item.vehicleId === vehicle.id)}
             />
           ))}
         </div>

@@ -1,19 +1,17 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useSyncExternalStore } from "react"
 import { useLiveQuery } from "dexie-react-hooks"
 import { db } from "@/lib/db/database"
 import { garageRepository } from "@/lib/db/garage-repository"
-import type { CreateVehicleInput, MaintenanceOperation, Vehicle } from "@/lib/domain/types"
+import type { CreateVehicleInput, JournalEntry, MaintenanceOperation, Vehicle } from "@/lib/domain/types"
+
+function subscribeNever() {
+  return () => {}
+}
 
 function useClientReady() {
-  const [ready, setReady] = useState(false)
-
-  useEffect(() => {
-    setReady(true)
-  }, [])
-
-  return ready
+  return useSyncExternalStore(subscribeNever, () => true, () => false)
 }
 
 export function useVehicles() {
@@ -39,16 +37,41 @@ export function useOperations(vehicleId: string | undefined) {
 
 export function useGarageData() {
   const client = useClientReady()
-  const vehicles = useLiveQuery(() => (client ? db.vehicles.toArray() : undefined), [client])
-  const operations = useLiveQuery(() => (client ? db.operations.toArray() : undefined), [client])
+  const vehicles = useLiveQuery(
+    () => (client ? db.vehicles.toArray() : Promise.resolve(undefined as Vehicle[] | undefined)),
+    [client],
+  )
+  const operations = useLiveQuery(
+    () =>
+      client ? db.operations.toArray() : Promise.resolve(undefined as MaintenanceOperation[] | undefined),
+    [client],
+  )
+  const journal = useLiveQuery(
+    () => (client ? db.journal.toArray() : Promise.resolve(undefined as JournalEntry[] | undefined)),
+    [client],
+  )
   const settings = useLiveQuery(() => (client ? garageRepository.getSettings() : undefined), [client])
 
   return {
     vehicles: vehicles ?? [],
     operations: operations ?? [],
+    journal: journal ?? [],
     settings,
-    ready: client && vehicles !== undefined && operations !== undefined && settings !== undefined,
+    ready:
+      client &&
+      vehicles !== undefined &&
+      operations !== undefined &&
+      journal !== undefined &&
+      settings !== undefined,
   }
+}
+
+export function useJournal(vehicleId: string | undefined) {
+  const client = useClientReady()
+  return useLiveQuery(
+    () => (client && vehicleId ? garageRepository.listJournal(vehicleId) : []),
+    [client, vehicleId],
+  )
 }
 
 export function vehicleTitle(vehicle: Pick<Vehicle, "nickname" | "make" | "model">): string {
