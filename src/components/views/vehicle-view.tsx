@@ -73,7 +73,7 @@ export function VehicleView({ id }: { id: string }) {
         }
       />
 
-      <div className="flex flex-col items-center gap-4 rounded-3xl bg-card/70 p-5 ring-1 ring-white/8">
+      <div className="flex flex-col gap-4 rounded-3xl bg-card/70 p-5 ring-1 ring-white/8">
         <LicensePlate plate={vehicle.plate} size="lg" />
         <div className="grid w-full grid-cols-2 gap-3 text-center">
           <div className="rounded-2xl bg-background/40 p-3">
