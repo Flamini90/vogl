@@ -53,10 +53,16 @@ Se i km non arrivano, li inserisci a mano. Il VIN viene decodificato per marca, 
 
 Nel dettaglio veicolo, la scheda **Diario** registra rifornimenti (o ricariche), chilometri, interventi e spese. Due pieni consecutivi calcolano il consumo medio (L/100 km o kWh/100 km). I costi restano sul dispositivo e finiscono nel backup JSON.
 
+## Revisioni dal Portale
+
+Nella scheda Documenti, **Revisioni dal Portale** interroga il [Portale dell'Automobilista](https://www.ilportaledellautomobilista.it/interrogazionistoricorevisioni/spa/) e recupera lo storico revisioni della targa (data, chilometri, esito). Con un tap VOGL aggiorna la prossima revisione (+24 mesi), il chilometraggio e il diario.
+
+Il captcha del Portale va letto a mano in app: i servizi di soluzione automatica (amazoncaptcha, OCR) non riconoscono questo tipo di captcha, che è pensato per bloccarli. Tutto il resto — sessione, verifica, storico, mappatura — è automatico.
+
 ## Notifiche
 
 Da Impostazioni attiva le notifiche e, se possibile, installa VOGL come app (PWA). I reminder vengono valutati all'apertura e, su Chrome Android, anche in background con Periodic Background Sync.
 
 ## Stack
 
-Next.js, Tailwind CSS, shadcn/ui, Dexie. Codice organizzato per dominio (`lib/domain`), persistenza (`lib/db`), lookup, OBD, diario e notifiche, senza duplicare le regole di scadenza.
+Next.js, Tailwind CSS, shadcn/ui, Dexie. Codice organizzato per dominio (`lib/domain`), persistenza (`lib/db`), lookup (targa, VIN, Portale), OBD, diario e notifiche, senza duplicare le regole di scadenza.

@@ -18,6 +18,7 @@ import { PageHeader } from "@/components/layout/page-header"
 import { OperationRow } from "@/components/maintenance/operation-row"
 import { OperationEditor } from "@/components/maintenance/operation-editor"
 import { ObdSheet } from "@/components/obd/obd-sheet"
+import { RevisioniSheet } from "@/components/portal/revisioni-sheet"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -32,6 +33,7 @@ export function VehicleView({ id }: { id: string }) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [completingId, setCompletingId] = useState<string | null>(null)
   const [composer, setComposer] = useState<JournalComposerMode | null>(null)
+  const [revisioniOpen, setRevisioniOpen] = useState(false)
 
   const projections = useMemo(
     () => (vehicle && operations ? projectVehicleOperations(vehicle, operations) : []),
@@ -124,18 +126,39 @@ export function VehicleView({ id }: { id: string }) {
           <TabsTrigger value="wear">Usura</TabsTrigger>
           <TabsTrigger value="journal">Diario</TabsTrigger>
         </TabsList>
-        {(Object.keys(grouped) as Array<keyof typeof grouped>).map((key) => (
-          <TabsContent key={key} value={key} className="space-y-3 pt-4">
-            {grouped[key].map((projection) => (
-              <OperationRow
-                key={projection.operation.id}
-                projection={projection}
-                onComplete={() => setCompletingId(projection.operation.id)}
-                onEdit={() => setEditingId(projection.operation.id)}
-              />
-            ))}
-          </TabsContent>
-        ))}
+        <TabsContent value="document" className="space-y-3 pt-4">
+          <Button variant="outline" className="h-11 w-full" onClick={() => setRevisioniOpen(true)}>
+            Revisioni dal Portale
+          </Button>
+          {grouped.document.map((projection) => (
+            <OperationRow
+              key={projection.operation.id}
+              projection={projection}
+              onComplete={() => setCompletingId(projection.operation.id)}
+              onEdit={() => setEditingId(projection.operation.id)}
+            />
+          ))}
+        </TabsContent>
+        <TabsContent value="ordinary" className="space-y-3 pt-4">
+          {grouped.ordinary.map((projection) => (
+            <OperationRow
+              key={projection.operation.id}
+              projection={projection}
+              onComplete={() => setCompletingId(projection.operation.id)}
+              onEdit={() => setEditingId(projection.operation.id)}
+            />
+          ))}
+        </TabsContent>
+        <TabsContent value="wear" className="space-y-3 pt-4">
+          {grouped.wear.map((projection) => (
+            <OperationRow
+              key={projection.operation.id}
+              projection={projection}
+              onComplete={() => setCompletingId(projection.operation.id)}
+              onEdit={() => setEditingId(projection.operation.id)}
+            />
+          ))}
+        </TabsContent>
         <TabsContent value="journal" className="pt-4">
           <JournalTab
             vehicle={vehicle}
@@ -177,6 +200,8 @@ export function VehicleView({ id }: { id: string }) {
       />
 
       <JournalComposer vehicle={vehicle} mode={composer} onClose={() => setComposer(null)} />
+
+      <RevisioniSheet vehicle={vehicle} open={revisioniOpen} onClose={() => setRevisioniOpen(false)} />
 
       <CompleteOperationSheet
         vehicle={vehicle}
